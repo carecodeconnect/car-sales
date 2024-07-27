@@ -53,6 +53,14 @@ To develop with this project, follow these steps:
 
 4. Open the notebooks or Quarto files with your chosen text editor.
 
+5. To publish with `Quarto`, you will need an account at [Quarto Pub](https://www.quartopub.com), and then run:
+
+   ```
+   cd quarto
+   quarto publish quarto-pub document.qmd
+   quarto publish quarto-pub presentation.qmd
+   ```
+
 ## Project Structure
 
 Below is the tree structure of the project for quick reference:
