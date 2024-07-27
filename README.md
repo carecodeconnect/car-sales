@@ -53,7 +53,9 @@ To develop with this project, follow these steps:
 
 4. Open the notebooks or Quarto files with your chosen text editor.
 
-5. To publish with `Quarto`, you will need an account at [Quarto Pub](https://www.quartopub.com), and then run:
+5. Install Quarto (follow instructions [here](https://quarto.org/docs/get-started/)).
+
+6. To publish on the web with `Quarto`, you will need an account at [Quarto Pub](https://www.quartopub.com), and then run:
 
    ```
    cd quarto
