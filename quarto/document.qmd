@@ -1,0 +1,595 @@
+---
+title: "Car Sales Analysis"
+execute:
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    html-math-method: plain
+    theme: darkly
+jupyter: python3
+---
+
+# Executive Summary
+
+This report provides:
+
+🚗 Analysis of UK car sales data (2023-2024)
+
+📊 Popularity, price, and unit sales/revenue
+
+🚀 Recommendations for increasing revenue:
+
+1. Investigate sales in Bath
+2. Sell Jeep, RAM, Dodge, Mazda, Chevrolet models
+3. Start marketing campaign during Q1 (March)
+
+# Getting Started
+
+To interact with the report, select items from the "Tables of contents".
+
+Some of the charts are interactive. To play with the data visualisations, hover your curser over the data.
+
+To display code chunks, click on "Show the code".
+
+```{python}
+#| echo: false
+# Import packages
+import pandas as pd
+import pygwalker as pyg
+import pandasql as psql
+import matplotlib.pyplot as plt
+%matplotlib inline
+import plotly.express as px
+import seaborn as sns
+```
+
+```{python}
+#| echo: false
+# Import data
+purchase_data = pd.read_csv("../data/lf_tech_test_purchase_data.csv", index_col="customer_id")
+vehicle_data = pd.read_csv("../data/lf_tech_test_vehicle_data.csv", index_col="vehicle_id")
+# Merge the DataFrames on 'vehicle_id'
+merged_data = pd.merge(purchase_data, vehicle_data, on='vehicle_id')
+```
+
+# Popularity & Price
+
+## 🚗 Most Popular Cars
+
+```{python}
+# Grouping by 'make' and 'exterior_color' and counting the occurrences
+grouped_data = merged_data.groupby(['make', 'exterior_color']).size().reset_index(name='count')
+
+# Finding the most popular car make and color combination
+most_popular_combination = grouped_data.loc[grouped_data['count'].idxmax()]
+print(f"🚗 Car make and color combination: {most_popular_combination['make']} in colour {most_popular_combination['exterior_color']} (count: {most_popular_combination['count']})")
+print()
+
+# Finding the most popular car make (ignoring color)
+grouped_make = merged_data.groupby('make').size().reset_index(name='count')
+most_popular_make = grouped_make.loc[grouped_make['count'].idxmax()]
+print(f"🚘 Car make: {most_popular_make['make']} (count: {most_popular_make['count']})")
+print()
+
+# Finding the most popular car color (ignoring make)
+grouped_color = merged_data.groupby('exterior_color').size().reset_index(name='count')
+most_popular_color = grouped_color.loc[grouped_color['count'].idxmax()]
+print(f"🎨 Colour: {most_popular_color['exterior_color']} (count: {most_popular_color['count']})")
+```
+
+## 💵 Most Expensive Mazda Car Sold 
+
+```{python}
+# Define the MySQL query
+query = """
+SELECT v.name, v.price, v.year, p.city, p.customer_id, p.purchase_date
+FROM purchase_data p
+JOIN vehicle_data v
+ON p.vehicle_id = v.vehicle_id
+WHERE make = "Mazda"
+ORDER BY v.price DESC
+LIMIT 1
+"""
+
+# Execute the SQL query
+most_expensive = psql.sqldf(query, locals())
+
+# Print the result
+car_name = most_expensive['name'].iloc[0]
+car_price = most_expensive['price'].iloc[0]  # or .values[0] or .item()
+#car_year = most_expensive['year'].iloc[0]
+car_city = most_expensive['city'].iloc[0]
+customer_id = most_expensive['customer_id'].iloc[0]
+purchase_date = most_expensive['purchase_date'].iloc[0]
+
+print(f"The most expensive Mazda car sold was a: ")
+print()
+print(f"{car_name}.")
+print()
+print(f"Sold for £{car_price}.") 
+print()
+print(f"Purchased in {car_city}.") 
+print()
+print(f"Purchased on {purchase_date}.")
+```
+
+## 🚗💚 Green Cars Sold by City
+
+```{python}
+# Define the SQL query
+query = """
+SELECT p.city, COUNT(*) as count
+FROM purchase_data p
+JOIN vehicle_data v
+ON p.vehicle_id = v.vehicle_id
+WHERE v.exterior_color = "Green"
+AND p.purchase_date BETWEEN "2023-10-13" AND "2024-02-02"
+GROUP BY p.city
+ORDER BY count DESC
+"""
+
+# Execute the SQL query
+green_cars = psql.sqldf(query, locals())
+
+# Add a ranking column, starting from 1
+green_cars.insert(0, 'rank', range(1, len(green_cars) + 1))
+
+# Print the result without displaying the index
+print("Number of green cars sold in each city from 2023-10-13 to 2024-02-02:")
+print()
+print(green_cars.to_string(index=False))
+```
+
+## Average Car Price by City
+
+```{python}
+# Define the SQL query, with rounding
+query = """
+SELECT city, ROUND(AVG(price), 2) AS average_price
+FROM purchase_data p 
+JOIN vehicle_data v
+ON p.vehicle_id = v.vehicle_id
+GROUP BY p.city
+ORDER BY average_price DESC
+"""
+
+# Execute the SQL query
+average_price_by_city = psql.sqldf(query, locals())
+
+# Add a ranking column, starting from 1
+average_price_by_city.insert(0, 'rank', range(1, len(average_price_by_city) + 1))
+
+# Print the result without displaying the index
+print("Average price for cars in each city: ")
+print()
+print(average_price_by_city.to_string(index=False))
+
+```
+
+## Most Popular Cars by City
+
+```{python}
+# Filter for sales in 2024
+merged_data['purchase_date'] = pd.to_datetime(merged_data['purchase_date'])
+filtered_data = merged_data[merged_data['purchase_date'].dt.year == 2024]
+
+# Group by city, make, and model, then count the occurrences
+grouped_data = filtered_data.groupby(['city', 'make', 'model']).size().reset_index(name='count')
+
+# Sort by city and then by count in descending order
+grouped_data = grouped_data.sort_values(['city', 'count'], ascending=[True, False])
+
+# Rank within each city
+grouped_data['rank'] = grouped_data.groupby('city')['count'].rank(method='first', ascending=False)
+
+# Convert rank to integer
+grouped_data['rank'] = grouped_data['rank'].astype(int)
+
+# Filter to get the top 5 cars per city
+top_5_cars_per_city = grouped_data[grouped_data['rank'] <= 5]
+
+# Reorder columns to have 'rank' as the first column, excluding 'name'
+columns_to_display = ['rank', 'city', 'make', 'model', 'count']
+top_5_cars_per_city = top_5_cars_per_city[columns_to_display]
+
+# Display the results without index
+print("Top 5 most popular cars in each city (2024):")
+print()
+print(top_5_cars_per_city.to_string(index=False))
+```
+
+## Price and Discount
+
+The relationship between price and discount given appears linear and positive, so as price increases, the discount increases.
+
+There seem to be `12` relatively distinct lines, which might be worth further investigation.
+
+```{python}
+# Calculate the discount amount
+merged_data['discount_amount'] = merged_data['price'] * merged_data['rrp_discount']
+
+# Calculate the final price after discount
+merged_data['price_after_discount'] = merged_data['price'] - merged_data['discount_amount']
+
+# Set the style of the visualization
+sns.set(style="darkgrid")
+
+# Create the scatter plot using Seaborn
+plt.figure(figsize=(10, 6))
+sns.scatterplot(
+    data=merged_data,
+    x='price_after_discount',
+    y='discount_amount',
+    hue='city',  # Color points by city
+    palette='viridis',  # Set the color palette
+    s=100,  # Size of points
+    alpha=0.7
+)
+
+# Set plot title and labels
+plt.title('Price After Discount vs. Discount Amount')
+plt.xlabel('Price After Discount (£)')
+plt.ylabel('Discount Amount (£)')
+
+# Show the plot
+plt.legend(title='City')
+plt.show()
+```
+
+# Unit Sales and Revenue 
+
+The following plots show a difference, which might be statistically significant, between unit sales and revenues between Bath, and other cities, with Bath having higher sales/revenues.
+
+```{python}
+# Convert purchase_date to datetime
+purchase_data['purchase_date'] = pd.to_datetime(purchase_data['purchase_date'])
+
+# Create a new column for month (formatted as 'YYYY-MM')
+purchase_data['purchase_month'] = purchase_data['purchase_date'].dt.to_period('M').astype(str)
+
+# Merge with vehicle_data to include price information
+merged_data = pd.merge(purchase_data, vehicle_data, on='vehicle_id')
+
+# Aggregate data: Total unit sales and total revenue by month and city
+monthly_summary = merged_data.groupby(['purchase_month', 'city']).agg(
+    total_unit_sales=('vehicle_id', 'count'),
+    total_revenue=('price', 'sum')
+).reset_index()
+
+# Convert purchase_month to datetime for plotting
+monthly_summary['purchase_month'] = pd.to_datetime(monthly_summary['purchase_month'], format='%Y-%m')
+```
+
+## Total Unit Sales
+
+```{python}
+# Plot total unit sales with log scale
+fig1 = px.line(
+    monthly_summary,
+    x='purchase_month',
+    y='total_unit_sales',
+    color='city',
+    markers=True,
+    title='Total Unit Sales Over Time by City',
+    labels={'purchase_month': 'Month', 'total_unit_sales': 'Total Unit Sales'}
+)
+
+# Apply log scale to the y-axis
+fig1.update_layout(
+    yaxis_type='log',
+    yaxis_title='Total Unit Sales',
+    legend_title='City',
+    template='plotly_dark'
+)
+
+# Show the plot
+fig1.show()
+```
+
+## Total Revenue
+
+```{python}
+
+# Plot total revenue with log scale
+fig2 = px.line(
+    monthly_summary,
+    x='purchase_month',
+    y='total_revenue',
+    color='city',
+    markers=True,
+    title='Total Revenue Over Time by City',
+    labels={'purchase_month': 'Month', 'total_revenue': 'Total Revenue'}
+)
+
+# Apply log scale to the y-axis
+fig2.update_layout(
+    yaxis_type='log',
+    yaxis_title='Total Revenue',
+    legend_title='City',
+    template='plotly_dark'
+)
+fig2.show()
+```
+
+# Recommendations for Growing Revenue
+
+## Recommendation 1: Investigate Sales in Bath
+
+Car sales in **Bath** are dramatically higher than other cities.
+
+```{python}
+# Group by city and count the number of sales
+sales_by_city = merged_data.groupby('city').size().reset_index(name='total_sales')
+
+# Set dark mode for the plot
+sns.set_style("darkgrid")
+plt.style.use("dark_background")
+
+# Plot total car sales by city
+plt.figure(figsize=(10, 6))
+sns.barplot(
+    data=sales_by_city,
+    x='city',
+    y='total_sales',
+    palette='viridis'  # Colorblind-friendly palette
+)
+
+# Set plot title and labels
+plt.title('Total Car Sales by City (2024)')
+plt.xlabel('City')
+plt.ylabel('Total Sales')
+plt.xticks(rotation=45, ha='right')  # Rotate city labels for better readability
+plt.show()
+```
+
+```{python}
+# Find sales for Bath
+bath_sales = sales_by_city[sales_by_city['city'] == 'Bath']['total_sales'].values
+
+# Calculate average sales for other cities
+average_sales_other_cities = sales_by_city[sales_by_city['city'] != 'Bath']['total_sales'].mean()
+
+# Compute the difference
+difference = bath_sales - average_sales_other_cities
+
+# Display the results
+print(f"The total sales in Bath is £{bath_sales[0]}.")
+print()
+print(f"The average sales in other cities is £{average_sales_other_cities:.2f}")
+print()
+print(f"The difference is £{difference[0]:.2f}")
+```
+
+```{python}
+# Plot the difference
+plt.figure(figsize=(10, 6))
+sns.barplot(
+    x=['Bath', 'Average Other Cities'],
+    y=[bath_sales[0], average_sales_other_cities],
+    hue=['Bath', 'Average Other Cities'],
+    dodge=False,
+    palette='viridis'
+)
+
+# Set plot title and labels
+plt.title('Total Sales in Bath vs. Average Sales in Other Cities (2024)')
+plt.ylabel('Total Sales')
+plt.xlabel('City')
+plt.legend(title='City', loc='upper right', bbox_to_anchor=(1.15, 1))
+plt.show()
+```
+
+The city with the lowest approximate population - **Bath** - has got the highest total revenue, probably due to having much higher total sales.
+
+```{python}
+# Convert purchase_date to datetime
+purchase_data['purchase_date'] = pd.to_datetime(purchase_data['purchase_date'])
+
+# Create a new column for month (formatted as 'YYYY-MM')
+purchase_data['purchase_month'] = purchase_data['purchase_date'].dt.to_period('M').astype(str)
+
+# Merge with vehicle_data to include price information
+merged_data = pd.merge(purchase_data, vehicle_data, on='vehicle_id')
+
+# Define the SQL query to aggregate total revenue by approx_population and city
+query = """
+    SELECT
+        approx_population,
+        city,
+        SUM(price) AS total_revenue
+    FROM merged_data
+    GROUP BY approx_population, city
+"""
+
+# Execute the query using pandasql
+revenue_by_population_city = psql.sqldf(query, locals())
+
+# Plot total revenue by approx_population with color for city
+fig = px.scatter(
+    revenue_by_population_city,
+    x='approx_population',
+    y='total_revenue',
+    color='city',  # Add color for different cities
+    title='Total Revenue by Approximate Population and City',
+    labels={'approx_population': 'Approximate Population', 'total_revenue': 'Total Revenue'},
+    trendline='ols'  # Add a trendline to see the general trend
+)
+
+# Update layout for better readability
+fig.update_layout(
+    xaxis_title='Approximate Population',
+    yaxis_title='Total Revenue',
+    template='plotly_dark'
+)
+
+# Show the plot
+fig.show()
+```
+
+![Total Car Sales by City](car-sales-map.png)
+
+## Recommendation 2: Makes and Models
+
+Sell **Jeep**, **RAM**, **Dodge**, **Mazda**, **Chevrolet** models.
+
+```{python}
+# Define SQL query to get total revenue by vehicle make and model
+query = """
+SELECT v.make, v.model, SUM(v.price) AS total_revenue
+FROM purchase_data p
+JOIN vehicle_data v ON p.vehicle_id = v.vehicle_id
+GROUP BY v.make, v.model
+ORDER BY total_revenue DESC
+"""
+
+# Execute the SQL query using pandasql
+revenue_data = psql.sqldf(query, locals())
+
+# Create a line chart with Plotly Express
+fig = px.line(
+    revenue_data,
+    x='total_revenue',  # Use total revenue as the x-axis values
+    y='model',  # Use model as the y-axis
+    color='make',  # Color lines by make
+    markers=True,  # Show markers on the lines
+    title='Total Revenue by Vehicle Make and Model',
+    labels={'total_revenue': 'Total Revenue', 'model': 'Vehicle Model'},
+    line_shape='linear'  # Use linear lines
+)
+
+# Update y-axis to hide labels and reverse the order
+fig.update_layout(
+    yaxis=dict(
+        showticklabels=False,  # Hide y-axis tick labels
+        autorange='reversed'  # Reverse the y-axis order
+    ),
+    xaxis_title='Total Revenue',
+    yaxis_title='Vehicle Model',
+    template='plotly_dark',
+    xaxis_tickprefix='£',  # Show currency prefix
+    yaxis_tickangle=-45,
+    legend_title='Vehicle Make'  # Title for the legend
+)
+
+# Show the plot
+fig.show()
+```
+
+
+Sell the vehicles with the top 3 revenue:
+
+1. RAM 3500
+2. Jeep Grand Cherokee 4xe
+3. Mazda CX-90 PHEV
+
+```{python}
+# Define SQL query to get total revenue by vehicle make and model
+query = """
+SELECT v.make, v.model, SUM(v.price) AS total_revenue
+FROM purchase_data p
+JOIN vehicle_data v
+ON p.vehicle_id = v.vehicle_id
+GROUP BY v.make, v.model
+ORDER BY total_revenue DESC
+LIMIT 10
+"""
+
+# Execute the SQL query using pandasql
+best_revenue_vehicles = psql.sqldf(query, locals())
+
+# Add a rank column starting from 1
+best_revenue_vehicles['rank'] = range(1, len(best_revenue_vehicles) + 1)
+
+# Reorder columns to have 'rank' as the first column
+best_revenue_vehicles = best_revenue_vehicles[['rank', 'make', 'model', 'total_revenue']]
+
+# Print the result with ranking, without displaying the index
+print("Top 10 vehicles providing the best revenue:")
+print()
+print(best_revenue_vehicles.to_string(index=False))
+```
+
+```{python}
+# Define SQL query to get total revenue by vehicle model
+query = """
+SELECT v.make, v.model, SUM(v.price) AS total_revenue
+FROM purchase_data p
+JOIN vehicle_data v ON p.vehicle_id = v.vehicle_id
+GROUP BY v.make, v.model
+ORDER BY total_revenue DESC
+LIMIT 10
+"""
+
+# Execute the SQL query using pandasql
+best_revenue_models = psql.sqldf(query, locals())
+
+# Add a rank column starting from 1
+best_revenue_models['rank'] = range(1, len(best_revenue_models) + 1)
+
+# Reorder columns to have 'rank' as the first column
+best_revenue_models = best_revenue_models[['rank', 'make', 'model', 'total_revenue']]
+
+# Plot total revenue by vehicle model
+fig = px.bar(
+    best_revenue_models,
+    x='total_revenue',
+    y='model',  # Show model on the y-axis
+    color='make',  # Color by make
+    orientation='h',  # Horizontal bar plot
+    title='Top 10 Vehicle Models by Total Revenue',
+    labels={'total_revenue': 'Total Revenue', 'model': 'Vehicle Model'},
+    text='make',  # Display make names as text on bars
+    color_discrete_sequence=px.colors.qualitative.Plotly  # Optional: Customize color sequence
+)
+
+# Update layout to reverse y-axis
+fig.update_layout(
+    xaxis_title='Total Revenue',
+    yaxis_title='Vehicle Model',
+    template='plotly_dark',
+    xaxis_tickprefix='£',  # Show currency prefix
+    yaxis_categoryorder='total ascending',  # Sort bars in ascending order of revenue
+    yaxis_categoryarray=best_revenue_models['model'][::-1]  # Reverse the y-axis categories
+)
+
+# Show the plot
+fig.show()
+```
+
+## Recommendation 3: Marketing Campaign
+
+Start marketing campaign during seasonal spikes (e.g. **March**, Q1).
+
+```{python}
+
+# Plot total revenue with log scale
+fig2 = px.line(
+    monthly_summary,
+    x='purchase_month',
+    y='total_revenue',
+    color='city',
+    markers=True,
+    title='Total Revenue Over Time by City',
+    labels={'purchase_month': 'Month', 'total_revenue': 'Total Revenue'}
+)
+
+# Apply log scale to the y-axis
+fig2.update_layout(
+    yaxis_type='log',
+    yaxis_title='Total Revenue',
+    legend_title='City',
+    template='plotly_dark'
+)
+fig2.show()
+```
+
+# Feedback
+
+To give feedback on the presentation, get in touch!
+
+`carecodeconnect@pm.me`
+
+[Click here to view the code](https://github.com/carecodeconnect/car-sales)
