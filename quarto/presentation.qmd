@@ -585,6 +585,4 @@ fig2.show()
 
 To give feedback on the presentation, get in touch!
 
-`carecodeconnect@pm.me`
-
-[Click here to view the code](https://github.com/carecodeconnect/car-sales)
+[Click here to view the code and get in touch](https://github.com/carecodeconnect/car-sales)
