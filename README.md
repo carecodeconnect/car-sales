@@ -18,6 +18,8 @@ To read the report, click [here](https://carecodeconnect.quarto.pub/car-sales-an
 
 To read the presentation, click [here](https://carecodeconnect.quarto.pub/car-sales-analysis-presentation/).
 
+To see my working, see the `PDF` files in the `notebooks` folder.
+
 ## Tools
 
 The report and presentation were built using:
