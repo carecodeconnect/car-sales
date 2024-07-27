@@ -24,7 +24,7 @@ To see my working, see the `PDF` files in the `notebooks` folder.
 
 The report and presentation were built using:
 
-* [Quarto](https://quarto.org/) open source scientific and technical publishing system.
+* [Quarto](https://quarto.org/) open source scientific and technical publishing system (version 1.5.6)
 
 * [Python](https://www.python.org/) version 3.10.
 
