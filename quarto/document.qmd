@@ -429,7 +429,19 @@ fig.update_layout(
 fig.show()
 ```
 
-![Total Car Sales by City](car-sales-map.png)
+# Total Car Sales by City (Map)
+
+![Total Car Sales by City]("./car-sales-map.png")
+
+```{python}
+#walker = pyg.walk(
+#        merged_data, 
+#        spec = "../notebooks/pygwalker-spec.json",
+#        kernel_computation = False,
+#        env = "JupyterConvert"
+#        )
+#walker
+```
 
 ## Recommendation 2: Makes and Models
 
