@@ -44,6 +44,7 @@ import matplotlib.pyplot as plt
 %matplotlib inline
 import plotly.express as px
 import seaborn as sns
+#pyg.__version__
 ```
 
 ```{python}
@@ -441,6 +442,11 @@ fig.show()
 #        env = "JupyterConvert"
 #        )
 #walker
+
+#pyg.component(merged_data).poi().encode(
+#    latitude="lat",
+#    longitude="lng"
+#)
 ```
 
 ## Recommendation 2: Makes and Models
