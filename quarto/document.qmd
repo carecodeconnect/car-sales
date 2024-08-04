@@ -44,6 +44,8 @@ import matplotlib.pyplot as plt
 %matplotlib inline
 import plotly.express as px
 import seaborn as sns
+import folium
+from folium import plugins
 #pyg.__version__
 ```
 
@@ -434,19 +436,20 @@ fig.show()
 
 ![Total Car Sales by City](car-sales-map.png)
 
-```{python}
-#walker = pyg.walk(
-#        merged_data, 
-#        spec = "../notebooks/pygwalker-spec.json",
-#        kernel_computation = False,
-#        env = "JupyterConvert"
-#        )
-#walker
+### Total Car Sales by City (Heat Map)
 
-#pyg.component(merged_data).poi().encode(
-#    latitude="lat",
-#    longitude="lng"
-#)
+```{python}
+# Folium map
+map = folium.Map(location=[52.3555, -1.1743], tiles="Cartodb dark_matter", zoom_start=6)
+
+# Extracting lat and lng points from merged_data
+heat_data = merged_data[['lat', 'lng']].values.tolist()
+
+# Adding the heat map to the map
+plugins.HeatMap(heat_data).add_to(map)
+
+# Display map
+map
 ```
 
 ## Recommendation 2: Makes and Models
